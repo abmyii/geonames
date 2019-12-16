@@ -1,8 +1,17 @@
-# Adapted from https://stackoverflow.com/questions/34498417/import-text-file-from-geonames-using-pandas-python
+#!/usr/bin/env python3
+"""
+Tested only with dumps from http://download.geonames.org/export/dump/, mostly
+US. ZIPs must only contain one file (the main data file) as per current pandas
+reader requirements (see https://github.com/pandas-dev/pandas/issues/30262 for
+more information).
+"""
 import pandas as pd
-from fuzzywuzzy import process, fuzz
-import time
+import re
 
+from fuzzywuzzy import process
+from fuzzywuzzy.fuzz import token_set_ratio, token_sort_ratio
+
+# Adapted from https://stackoverflow.com/a/34499197
 columns = {
     'geonameid': float,
     'name': str,
@@ -26,23 +35,48 @@ columns = {
 }
 
 
-# Remove readme from zip first
-t = time.time()
-data = pd.read_csv(
-    "data/US.zip", sep="\t", dtype=columns, low_memory=True, names=columns.keys()
-)
-print(time.time()-t)
+class GeoNames:
 
-t = time.time()
+    def __init__(self, data_csv):
+        self.data = pd.read_csv(
+            data_csv, sep="\t", dtype=columns, names=columns.keys()
+        )
 
-import re
+    def search(self, name, converter=None, **kwargs):
+        """Returns the most likely result as a pandas Series"""
+        # Make a copy of the dataset to preserve the original
+        data = self.data
 
-name = 'Fort Worth'
-state = 'TX'
+        # Filter data by string queries
+        filters = {'name': name, **kwargs}
+        for key, string in filters.items():
+            data = data[data[key].str.contains(string, case=False, regex=True)]
 
-d = data[data['name'].str.match(f'^{name}', flags=re.IGNORECASE)]  # feature name
-d = d[d['admin1code'].str.match(state, flags=re.IGNORECASE)]  # state
+        # Extract most likely result
+        match = process.extractOne(name, data['name'], scorer=token_set_ratio)
 
-search = process.extractOne(name, d['name'], scorer=fuzz.token_set_ratio)
-z = d.loc[search[-1]]
-print(float(z['latitude']), float(z['longitude']), fuzz.token_sort_ratio(name, search[0]))  # lat, lon, certainty
+        if not match:
+            return {}
+
+        result = data.loc[match[-1]]  # filter by result index in dataset
+        certainty = token_sort_ratio(name, match[0])
+
+        # Convert result if converter specified
+        if converter:
+            result = converter(result)
+
+        return {'result': result, 'certainty': certainty}
+
+
+if __name__ == '__main__':
+    import io
+    import urllib.request as request
+    import zipfile
+
+    # Download and test with smallest dump (YU - Yugoslavia)
+    YU = request.urlopen('http://download.geonames.org/export/dump/YU.zip')
+    zipfile = zipfile.ZipFile(io.BytesIO(YU.read()))
+
+    geo = GeoNames(zipfile.open('YU.txt'))
+    print(geo.search(name='Yugoslavia'))
+    print(geo.search(name='Yugoslavia', converter=dict))
