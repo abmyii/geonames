@@ -42,8 +42,12 @@ class GeoNames:
             data_csv, sep="\t", dtype=columns, names=columns.keys()
         )
 
-    def search(self, name, converter=None, **kwargs):
+    def search(self, name, converter=None, limit=1, **kwargs):
         """Returns the most likely result as a pandas Series"""
+        # Interpret 0 or negative numbers as no limit for results
+        if limit <= 0:
+            limit = None
+
         # Make a copy of the dataset to preserve the original
         data = self.data
 
@@ -52,20 +56,23 @@ class GeoNames:
         for key, string in filters.items():
             data = data[data[key].str.contains(string, case=False, regex=True)]
 
-        # Extract most likely result
-        match = process.extractOne(name, data['name'], scorer=token_set_ratio)
+        # Extract most likely result(s)
+        results = []
+        matches = process.extract(
+            name, data['name'], limit=limit, scorer=token_set_ratio
+        )
 
-        if not match:
-            return {}
+        for match in matches:
+            result = data.loc[match[-1]]  # filter by result index in dataset
+            certainty = token_sort_ratio(name, match[0])
 
-        result = data.loc[match[-1]]  # filter by result index in dataset
-        certainty = token_sort_ratio(name, match[0])
+            # Convert result if converter specified
+            if converter:
+                result = converter(result)
 
-        # Convert result if converter specified
-        if converter:
-            result = converter(result)
+            results.append({'result': result, 'certainty': certainty})
 
-        return {'result': result, 'certainty': certainty}
+        return results
 
 
 if __name__ == '__main__':
