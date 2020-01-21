@@ -9,7 +9,7 @@ import pandas as pd
 import re
 
 from fuzzywuzzy import process
-from fuzzywuzzy.fuzz import token_set_ratio, token_sort_ratio
+from fuzzywuzzy.fuzz import token_sort_ratio
 
 # Adapted from https://stackoverflow.com/a/34499197
 columns = {
@@ -58,8 +58,8 @@ class GeoNames:
 
         # Extract most likely result(s)
         results = []
-        matches = process.extract(
-            name, data['name'], limit=limit, scorer=token_set_ratio
+        matches = process.extractBests(
+            name, data['name'], limit=limit, scorer=token_sort_ratio
         )
 
         for match in matches:
