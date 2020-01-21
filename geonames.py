@@ -8,6 +8,9 @@ more information).
 import pandas as pd
 import re
 
+# https://stackoverflow.com/a/20627316
+pd.options.mode.chained_assignment = None  # default='warn'
+
 from fuzzywuzzy import process
 from fuzzywuzzy.fuzz import token_sort_ratio
 
@@ -42,7 +45,7 @@ class GeoNames:
             data_csv, sep="\t", dtype=columns, names=columns.keys()
         )
 
-    def search(self, name, converter=None, limit=1, **kwargs):
+    def search(self, name, converter=None, limit=1, regex=False, **kwargs):
         """Returns the most likely result as a pandas Series"""
         # Interpret 0 or negative numbers as no limit for results
         if limit <= 0:
@@ -51,10 +54,12 @@ class GeoNames:
         # Make a copy of the dataset to preserve the original
         data = self.data
 
-        # Filter data by string queries
-        filters = {'name': name, **kwargs}
-        for key, string in filters.items():
-            data = data[data[key].str.contains(string, case=False, regex=True)]
+        # Filter data by string queries before searching
+        filters = {**kwargs}
+        for key, val in filters.items():
+            data = data[
+                data[key].str.contains(val, case=False, regex=regex, na=False)
+            ]
 
         # Extract most likely result(s)
         results = []
@@ -70,7 +75,8 @@ class GeoNames:
             if converter:
                 result = converter(result)
 
-            results.append({'result': result, 'certainty': certainty})
+            result['certainty'] = certainty
+            results.append(result)
 
         return results
 
