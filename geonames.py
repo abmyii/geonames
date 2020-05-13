@@ -5,14 +5,12 @@ US. ZIPs must only contain one file (the main data file) as per current pandas
 reader requirements (see https://github.com/pandas-dev/pandas/issues/30262 for
 more information).
 """
+import difflib
 import pandas as pd
 import re
 
 # https://stackoverflow.com/a/20627316
 pd.options.mode.chained_assignment = None  # default='warn'
-
-from fuzzywuzzy import process
-from fuzzywuzzy.fuzz import token_sort_ratio
 
 # Adapted from https://stackoverflow.com/a/34499197
 columns = {
@@ -45,12 +43,8 @@ class GeoNames:
             data_csv, sep="\t", dtype=columns, names=columns.keys()
         )
 
-    def search(self, name, converter=None, limit=1, regex=False, **kwargs):
+    def search(self, name, converter=None, regex=False, **kwargs):
         """Returns the most likely result as a pandas Series"""
-        # Interpret 0 or negative numbers as no limit for results
-        if limit <= 0:
-            limit = None
-
         # Make a copy of the dataset to preserve the original
         data = self.data
 
@@ -61,24 +55,19 @@ class GeoNames:
                 data[key].str.contains(val, case=False, regex=regex, na=False)
             ]
 
-        # Extract most likely result(s)
-        results = []
-        matches = process.extractBests(
-            name, data['name'], limit=limit, scorer=token_sort_ratio
-        )
+        # Use difflib to find matches
+        diffs = difflib.get_close_matches(name, data['name'].tolist(), n=1, cutoff=0)
+        matches = data[data['name'] == diffs[0]]
 
-        for match in matches:
-            result = data.loc[match[-1]]  # filter by result index in dataset
-            certainty = token_sort_ratio(name, match[0])
+        for index, result in matches.iterrows():
+            certainty = difflib.SequenceMatcher(None, result['name'], name).ratio()
 
             # Convert result if converter specified
             if converter:
                 result = converter(result)
 
             result['certainty'] = certainty
-            results.append(result)
-
-        return results
+            yield result
 
 
 if __name__ == '__main__':
@@ -91,5 +80,5 @@ if __name__ == '__main__':
     zipfile = zipfile.ZipFile(io.BytesIO(YU.read()))
 
     geo = GeoNames(zipfile.open('YU.txt'))
-    print(geo.search(name='Yugoslavia'))
-    print(geo.search(name='Yugoslavia', converter=dict))
+    print(next(geo.search(name='Yugoslavia')))
+    print(next(geo.search(name='Yugoslavia', converter=dict)))

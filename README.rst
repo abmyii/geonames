@@ -33,7 +33,7 @@ The best way to search for a specific location is to have a "filter" value and t
     geo = geonames.GeoNames(zipfile.open('US.txt'))
 
     # Search with state specified (`admin1code` filters by state)
-    location = geo.search(name=name, admin1code='WV', limit=1)[0]
+    location = next(geo.search(name=name, admin1code='WV'))
     print(location)
 
 Which (if all goes well) should output:
