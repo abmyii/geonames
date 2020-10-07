@@ -7,7 +7,6 @@ more information).
 """
 import difflib
 import pandas as pd
-import re
 
 # https://stackoverflow.com/a/20627316
 pd.options.mode.chained_assignment = None  # default='warn'
