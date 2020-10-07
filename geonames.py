@@ -39,7 +39,7 @@ class GeoNames:
 
     def __init__(self, data_csv):
         self.data = pd.read_csv(
-            data_csv, sep="\t", dtype=columns, names=columns.keys()
+            data_csv, sep="\t", dtype=columns, names=tuple(columns)
         )
 
     def search(self, name, converter=None, regex=False, **kwargs):

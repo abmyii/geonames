@@ -22,7 +22,7 @@ Operating System :: Unix
 
 setuptools.setup(
     name="geonames-lib",
-    version="0.4",
+    version="0.4.1",
     author="abmyii",
     author_email="abdurrahmaaniqbal@hotmail.com",
     description="Library for working with GeoNames dump",
