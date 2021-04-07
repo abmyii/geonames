@@ -10,7 +10,7 @@ geonames requires Python 2.7 or 3.5+ as well as ``numpy`` and ``pandas`` package
 
 .. code::
 
-    pip install geonames
+    pip install geonames-lib
 
 Usage
 ------------
