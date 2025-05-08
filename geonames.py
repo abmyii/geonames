@@ -13,7 +13,7 @@ pd.options.mode.chained_assignment = None  # default='warn'
 
 # Adapted from https://stackoverflow.com/a/34499197
 columns = {
-    'geonameid': float,
+    'geonameid': int,
     'name': str,
     'asciiname': str,
     'alternatenames': str,
@@ -36,6 +36,11 @@ columns = {
 
 
 class GeoNames:
+    """A class to query places from the GeoNames geographical database.
+    
+    Requires a GeoNames file for instantiation.
+    Files can be found at the GeoNames.org dump page:
+    http://download.geonames.org/export/dump/"""
 
     def __init__(self, data_csv):
         self.data = pd.read_csv(
